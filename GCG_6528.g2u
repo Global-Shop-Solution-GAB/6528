@@ -1,0 +1,74 @@
+﻿Program.Sub.Preflight.Start
+V.Global.sError.Declare(String)
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Author: Arturo Almaguer
+'Date: 26 October 2021
+'Customer: Ididit, quote number 13019
+'This program places SOs on shipping hold if they meet certain requirements
+'This script is launched off 11872 Post OK hook from SO Header Screen
+
+Function.Intrinsic.UI.UsePixels ' Allows you to use Pixels instead of Twips throughout
+
+F.Intrinsic.Control.Try
+
+	V.Local.sOrderNo.Declare(String)
+	V.Local.sTerms.Declare(String)
+	V.Local.sSQL.Declare(String)
+	V.Local.sApprovalCode.Declare(String)
+	
+	'Setting variables
+	F.Intrinsic.String.LPad(V.Passed.000003,"0",7,V.Local.sOrderNo)
+	V.Local.sTerms.Set(V.Passed.000029)
+	
+	F.ODBC.Connection!Con.OpenCompanyConnection
+	
+	'If it is SO Header sreen New or Open
+	F.Intrinsic.Control.If(V.Caller.Switches, =, "N", "OR", V.Caller.Switches, =, "O")
+		
+		'If SO terms is CREDIT CARD
+		F.Intrinsic.Control.If(V.Local.sTerms, =, "CREDIT CAR")
+		
+			'Getting the Approval Code from the Payment screen
+			F.Intrinsic.String.Build("select RTRIM(ICV_HOST_APRV_CD) ICV_HOST_APRV_CD from V_PAYMENT where ORDER_NO = '{0}' and TRANS = 'ORDER';", V.Local.sOrderNo, V.Local.sSQL)
+			F.ODBC.Connection!Con.ExecuteAndReturn(V.Local.sSQL, V.Local.sApprovalCode)
+		
+			F.Intrinsic.Control.If(V.Local.sApprovalCode, <>, "1")
+				
+				'Turning on 'Shipping Hold' option 
+				F.Intrinsic.String.Build("update ORDER_HEADER set SHP_HLD_FLAG = '4' where ORDER_NO = '{0}';", V.Local.sOrderNo, V.Local.sSQL)
+				F.ODBC.Connection!Con.Execute(V.Local.sSQL)
+				
+			F.Intrinsic.Control.EndIf
+			
+		'If SO terms is WIRE UNPAID
+		F.Intrinsic.Control.ElseIf(V.Local.sTerms, =, "WIRE UNPAI")
+			
+			'Turning on 'Shipping Hold' option 
+			F.Intrinsic.String.Build("update ORDER_HEADER set SHP_HLD_FLAG = '4' where ORDER_NO = '{0}';", V.Local.sOrderNo, V.Local.sSQL)
+			F.ODBC.Connection!Con.Execute(V.Local.sSQL)
+			
+		F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.EndIf
+	F.ODBC.Connection!Con.Close
+
+F.Intrinsic.Control.Catch
+
+	F.Intrinsic.Control.CallSub(CatchError)
+	
+F.Intrinsic.Control.EndTry
+
+Program.Sub.Main.End
+Program.Sub.CatchError.Start
+F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.SubroutineCalledFrom, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Global.sError) 
+F.Intrinsic.UI.Msgbox(V.Global.sError)
+F.Intrinsic.Control.End()
+Program.Sub.CatchError.End
+
+Program.Sub.Comments.Start
+${$5$}$3.0.0.0$}$1
+${$6$}$apadilla$}$20211110105208073$}$Lag9STqBJOmNXSbd5+msRcBWPGz0aFqSwHruISZ+s7wqBLjzTxqURIDBdJhUU7JD8NTlRcjjzitNLym/EuLxWg==
+Program.Sub.Comments.End
